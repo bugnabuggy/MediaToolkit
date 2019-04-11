@@ -5,6 +5,7 @@ using System;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Threading;
 
 namespace MediaToolkit.Test
 {
@@ -309,6 +310,42 @@ namespace MediaToolkit.Test
 
             PrintMetadata(inputFile.Metadata);
             PrintMetadata(outputFile.Metadata);
+        }
+
+        [TestCase]
+        public void Can_Kill_process_in_the_middle_of_encoding()
+        {
+            string outputPath = string.Format(@"{0}\Convert_Basic_Test.mp4", Path.GetDirectoryName(_outputFilePath));
+
+            var inputFile = new MediaFile { Filename = _inputFilePath };
+            var outputFile = new MediaFile { Filename = outputPath };
+
+            using (var engine = new Engine())
+            {
+                var process = engine.GetFFmpegProcess();
+
+                var thread = new Thread(() =>
+                {
+                    try
+                    {
+                        engine.Convert(inputFile, outputFile, new ConversionOptions { VideoSize = VideoSize.Custom, CustomHeight = 120 });
+                        Console.WriteLine("'Convert' method stopped");
+                    }
+                    catch (NullReferenceException exp)
+                    {
+                        Console.WriteLine("The process was killed and disposed before the conversion finished");
+                    }
+                });
+
+                thread.Start();
+
+                Thread.Sleep(100);
+
+                Assert.IsFalse(process.HasExited);
+                process.Kill();
+                Assert.IsTrue(process.HasExited);
+
+            }
         }
 
         private void engine_ConvertProgressEvent(object sender, ConvertProgressEventArgs e)

@@ -20,16 +20,12 @@
         /// </summary>
         public event EventHandler<ConversionCompleteEventArgs> ConversionCompleteEvent;
 
-        private int _processRequestsNumber = 0;
-
         public Engine()
         {
-            
         }
 
         public Engine(string ffMpegPath) : base(ffMpegPath)
         {
-            this.FFmpegProcess = new Process();
         }
 
         /// <summary>
@@ -38,7 +34,6 @@
         /// <returns></returns>
         public Process GetFFmpegProcess()
         {
-            _processRequestsNumber++;
             return this.FFmpegProcess;
         }
 
@@ -319,14 +314,8 @@
                         this.FFmpegProcess.ExitCode + ": " + receivedMessagesLog[1] + receivedMessagesLog[0],
                         caughtException);
                 }
+                this.FFmpegProcess.CancelErrorRead();
             // } //end of 'using'
-
-            // do not dispose it automatically if external system has references to the process
-            if (_processRequestsNumber < 1)
-            {
-                this.FFmpegProcess.Dispose();
-            }
-            
         }
     }
 }

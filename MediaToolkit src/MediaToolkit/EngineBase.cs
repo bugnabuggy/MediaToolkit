@@ -42,6 +42,8 @@
         /// </summary>
         protected EngineBase(string ffMpegPath)
         {
+            this.FFmpegProcess = new Process();
+
             this.Mutex = new Mutex(false, LockName);
             this.isDisposed = false;
 
