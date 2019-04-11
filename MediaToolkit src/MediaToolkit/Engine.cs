@@ -20,6 +20,8 @@
         /// </summary>
         public event EventHandler<ConversionCompleteEventArgs> ConversionCompleteEvent;
 
+        private int _processRequestsNumber = 0;
+
         public Engine()
         {
             
@@ -27,7 +29,17 @@
 
         public Engine(string ffMpegPath) : base(ffMpegPath)
         {
-            
+            this.FFmpegProcess = new Process();
+        }
+
+        /// <summary>
+        /// We need this in order to have ability kill encoding process
+        /// </summary>
+        /// <returns></returns>
+        public Process GetFFmpegProcess()
+        {
+            _processRequestsNumber++;
+            return this.FFmpegProcess;
         }
 
         /// -------------------------------------------------------------------------------------------------
@@ -225,13 +237,20 @@
                                               ? this.GenerateStartInfo(engineParameters.CustomArguments)
                                               : this.GenerateStartInfo(engineParameters);
 
-            using (this.FFmpegProcess = Process.Start(processStartInfo))
-            {
+            this.FFmpegProcess.StartInfo = processStartInfo;
+
+            var started = this.FFmpegProcess.Start();
+            //using (this.FFmpegProcess = Process.Start(processStartInfo))
+            //{
                 Exception caughtException = null;
-                if (this.FFmpegProcess == null)
+                if (!started)
                 {
                     throw new InvalidOperationException(Resources.Exceptions_FFmpeg_Process_Not_Running);
                 }
+                //if (this.FFmpegProcess == null)
+                //{
+                //    throw new InvalidOperationException(Resources.Exceptions_FFmpeg_Process_Not_Running);
+                //}
 
                 this.FFmpegProcess.ErrorDataReceived += (sender, received) =>
                 {
@@ -300,7 +319,14 @@
                         this.FFmpegProcess.ExitCode + ": " + receivedMessagesLog[1] + receivedMessagesLog[0],
                         caughtException);
                 }
+            // } //end of 'using'
+
+            // do not dispose it automatically if external system has references to the process
+            if (_processRequestsNumber < 1)
+            {
+                this.FFmpegProcess.Dispose();
             }
+            
         }
     }
 }
