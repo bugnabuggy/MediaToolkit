@@ -322,18 +322,30 @@ namespace MediaToolkit.Test
 
             using (var engine = new Engine())
             {
-                var process = engine.GetFFmpegProcess();
+                Process process = new Process();
+                var isFinished = false;
 
+                engine.ConversionStartedEvent += (sender, args) =>
+                {
+                    process = args.Process;
+                };
+
+                
                 var thread = new Thread(() =>
                 {
                     try
                     {
-                        engine.Convert(inputFile, outputFile, new ConversionOptions { VideoSize = VideoSize.Custom, CustomHeight = 120 });
+                        engine.Convert(inputFile, outputFile,
+                            new ConversionOptions {VideoSize = VideoSize.Custom, CustomHeight = 120});
                         Console.WriteLine("'Convert' method stopped");
                     }
                     catch (NullReferenceException exp)
                     {
-                        Console.WriteLine("The process was killed and disposed before the conversion finished");
+                        // Console.WriteLine("The process was killed and disposed before the conversion finished");
+                    }
+                    finally
+                    {
+                        isFinished = true;
                     }
                 });
 
@@ -341,9 +353,16 @@ namespace MediaToolkit.Test
 
                 Thread.Sleep(100);
 
-                Assert.IsFalse(process.HasExited);
+                Assert.IsFalse(process.HasExited, "The process has not been started within 100 milliseconds!");
+
                 process.Kill();
-                Assert.IsTrue(process.HasExited);
+
+                Thread.Sleep(100);
+                Assert.IsTrue(process.HasExited, "The process has not been killed within 100 milliseconds!");
+
+                // Switch scheduler to another thread in order to process exception and set flag to true
+                Thread.Sleep(100);
+                Assert.IsTrue(isFinished);
 
             }
         }

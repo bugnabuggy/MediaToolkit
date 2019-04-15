@@ -18,6 +18,9 @@
         /// <summary>
         ///     Event queue for all listeners interested in conversionComplete events.
         /// </summary>
+
+
+        public event EventHandler<ConversionStartedEventArgs> ConversionStartedEvent;
         public event EventHandler<ConversionCompleteEventArgs> ConversionCompleteEvent;
 
         public Engine()
@@ -232,20 +235,19 @@
                                               ? this.GenerateStartInfo(engineParameters.CustomArguments)
                                               : this.GenerateStartInfo(engineParameters);
 
-            this.FFmpegProcess.StartInfo = processStartInfo;
-
-            var started = this.FFmpegProcess.Start();
-            //using (this.FFmpegProcess = Process.Start(processStartInfo))
-            //{
+            using (this.FFmpegProcess = Process.Start(processStartInfo))
+            {
                 Exception caughtException = null;
-                if (!started)
+
+                ConversionStartedEventArgs convertStartedEventArgs = new ConversionStartedEventArgs(this.FFmpegProcess, processStartInfo);
+
+                if (this.FFmpegProcess == null)
                 {
                     throw new InvalidOperationException(Resources.Exceptions_FFmpeg_Process_Not_Running);
                 }
-                //if (this.FFmpegProcess == null)
-                //{
-                //    throw new InvalidOperationException(Resources.Exceptions_FFmpeg_Process_Not_Running);
-                //}
+
+                // send notification about started conversion
+                this.ConversionStartedEvent?.Invoke(this, convertStartedEventArgs);
 
                 this.FFmpegProcess.ErrorDataReceived += (sender, received) =>
                 {
@@ -314,8 +316,7 @@
                         this.FFmpegProcess.ExitCode + ": " + receivedMessagesLog[1] + receivedMessagesLog[0],
                         caughtException);
                 }
-                this.FFmpegProcess.CancelErrorRead();
-            // } //end of 'using'
+            } //end of 'using'
         }
     }
 }
